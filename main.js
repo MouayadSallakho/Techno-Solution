@@ -1,8 +1,7 @@
 gsap.registerPlugin(MotionPathPlugin);
 
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const orbitIcons = Array.from(document.querySelectorAll(".js-orbit-icon"));
-const staticIcons = Array.from(document.querySelectorAll(".orbit-icon--static"));
+const desktopSceneMedia = window.matchMedia("(min-width: 768px)");
 
 let orbitTweens = [];
 let sceneTweens = [];
@@ -26,8 +25,25 @@ function clearSceneTweens() {
   sceneTweens = [];
 }
 
+function clearAllSceneAnimations() {
+  clearOrbitTweens();
+  clearSceneTweens();
+}
+
+function getOrbitIcons() {
+  return Array.from(document.querySelectorAll(".js-orbit-icon"));
+}
+
+function getStaticIcons() {
+  return Array.from(document.querySelectorAll(".orbit-icon--static"));
+}
+
 function positionOrAnimateIcons() {
   clearOrbitTweens();
+
+  if (!desktopSceneMedia.matches) return;
+
+  const orbitIcons = getOrbitIcons();
 
   orbitIcons.forEach((icon) => {
     const pathSelector = icon.dataset.path;
@@ -69,7 +85,9 @@ function positionOrAnimateIcons() {
 }
 
 function animateStaticIcons() {
-  if (prefersReducedMotion) return;
+  if (!desktopSceneMedia.matches || prefersReducedMotion) return;
+
+  const staticIcons = getStaticIcons();
 
   staticIcons.forEach((icon, index) => {
     const tween = gsap.to(icon, {
@@ -88,13 +106,12 @@ function animateStaticIcons() {
 function animateScene() {
   clearSceneTweens();
 
-  if (prefersReducedMotion) return;
+  if (!desktopSceneMedia.matches || prefersReducedMotion) return;
 
   const orbitScene = document.querySelector(".orbit-scene");
   const vortexGlow = document.querySelector(".vortex-glow");
   const haze = document.querySelectorAll(".scene-haze-a, .scene-haze-b");
   const orbitBlur = document.querySelectorAll(".orbit-blur");
-  const orbitBackRing = document.querySelectorAll(".orbit-back-ring");
 
   if (orbitScene) {
     const orbitSceneTween = gsap.to(orbitScene, {
@@ -150,22 +167,14 @@ function animateScene() {
 
     sceneTweens.push(blurTween);
   }
-
-  if (orbitBackRing.length) {
-    const ringTween = gsap.to(orbitBackRing, {
-      opacity: "+=0.03",
-      duration: 6.2,
-      repeat: -1,
-      yoyo: true,
-      ease: "sine.inOut",
-      stagger: 0.2
-    });
-
-    sceneTweens.push(ringTween);
-  }
 }
 
 function initAnimations() {
+  if (!desktopSceneMedia.matches) {
+    clearAllSceneAnimations();
+    return;
+  }
+
   positionOrAnimateIcons();
   animateScene();
   animateStaticIcons();
@@ -176,22 +185,11 @@ initAnimations();
 window.addEventListener(
   "resize",
   debounce(function () {
-    positionOrAnimateIcons();
-    animateScene();
-
-    if (window.AOS) {
-      AOS.refresh();
+    if (!desktopSceneMedia.matches) {
+      clearAllSceneAnimations();
+      return;
     }
+
+    initAnimations();
   }, 220)
 );
-
-
-window.addEventListener("load", function () {
-  const sceneWrap = document.querySelector(".scene-aos-wrap");
-
-  if (sceneWrap) {
-    requestAnimationFrame(() => {
-      sceneWrap.classList.add("is-visible");
-    });
-  }
-});
